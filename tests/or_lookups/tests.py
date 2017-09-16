@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from datetime import datetime
 from operator import attrgetter
 
@@ -24,7 +22,10 @@ class OrLookupsTests(TestCase):
 
     def test_filter_or(self):
         self.assertQuerysetEqual(
-            Article.objects.filter(headline__startswith='Hello') |  Article.objects.filter(headline__startswith='Goodbye'), [
+            (
+                Article.objects.filter(headline__startswith='Hello') |
+                Article.objects.filter(headline__startswith='Goodbye')
+            ), [
                 'Hello',
                 'Goodbye',
                 'Hello and goodbye'
@@ -58,7 +59,6 @@ class OrLookupsTests(TestCase):
             ],
             attrgetter("headline")
         )
-
 
     def test_stages(self):
         # You can shorten this syntax with code like the following,  which is
@@ -120,6 +120,12 @@ class OrLookupsTests(TestCase):
             ],
             attrgetter("headline"),
         )
+
+    def test_q_repr(self):
+        or_expr = Q(baz=Article(headline="Foö"))
+        self.assertEqual(repr(or_expr), "<Q: (AND: ('baz', <Article: Foö>))>")
+        negated_or = ~Q(baz=Article(headline="Foö"))
+        self.assertEqual(repr(negated_or), "<Q: (NOT (AND: ('baz', <Article: Foö>)))>")
 
     def test_q_negated(self):
         # Q objects can be negated
@@ -221,11 +227,10 @@ class OrLookupsTests(TestCase):
             3
         )
 
-        self.assertQuerysetEqual(
+        self.assertSequenceEqual(
             Article.objects.filter(Q(headline__startswith='Hello'), Q(headline__contains='bye')).values(), [
                 {"headline": "Hello and goodbye", "id": self.a3, "pub_date": datetime(2005, 11, 29)},
             ],
-            lambda o: o,
         )
 
         self.assertEqual(

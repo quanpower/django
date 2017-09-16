@@ -1,5 +1,4 @@
 from django import forms
-from django.forms.extras import SelectDateWidget
 
 from .models import Company
 
@@ -12,8 +11,10 @@ class I18nForm(forms.Form):
     time_field = forms.TimeField(localize=True)
     integer_field = forms.IntegerField(localize=True)
 
+
 class SelectDateForm(forms.Form):
-    date_field = forms.DateField(widget=SelectDateWidget)
+    date_field = forms.DateField(widget=forms.SelectDateWidget)
+
 
 class CompanyForm(forms.ModelForm):
     cents_paid = forms.DecimalField(max_digits=4, decimal_places=2, localize=True)

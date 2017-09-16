@@ -13,13 +13,14 @@ views or various mixins. Because this inheritance chain is very important, the
 ancestor classes are  documented under the section title of **Ancestors (MRO)**.
 MRO is an acronym for Method Resolution Order.
 
-View
-----
+``View``
+========
 
 .. class:: django.views.generic.base.View
 
     The master class-based base view. All other class-based views inherit from
-    this base class.
+    this base class. It isn't strictly a generic view and thus can also be
+    imported from ``django.views``.
 
     **Method Flowchart**
 
@@ -30,7 +31,7 @@ View
     **Example views.py**::
 
         from django.http import HttpResponse
-        from django.views.generic import View
+        from django.views import View
 
         class MyView(View):
 
@@ -39,13 +40,13 @@ View
 
     **Example urls.py**::
 
-        from django.conf.urls import patterns, url
+        from django.conf.urls import url
 
         from myapp.views import MyView
 
-        urlpatterns = patterns('',
+        urlpatterns = [
             url(r'^mine/$', MyView.as_view(), name='my-view'),
-        )
+        ]
 
     **Attributes**
 
@@ -64,6 +65,16 @@ View
         Returns a callable view that takes a request and returns a response::
 
             response = MyView.as_view()(request)
+
+        The returned view has ``view_class`` and ``view_initkwargs``
+        attributes.
+
+        When the view is called during the request/response cycle, the
+        :class:`~django.http.HttpRequest` is assigned to the view's ``request``
+        attribute. Any positional and/or keyword arguments :ref:`captured from
+        the URL pattern <how-django-processes-a-request>` are assigned to the
+        ``args`` and ``kwargs`` attributes, respectively. Then :meth:`dispatch`
+        is called.
 
     .. method:: dispatch(request, *args, **kwargs)
 
@@ -89,11 +100,13 @@ View
 
     .. method:: options(request, *args, **kwargs)
 
-        Handles responding to requests for the OPTIONS HTTP verb.  Returns a
-        list of the allowed HTTP method names for the view.
+        Handles responding to requests for the OPTIONS HTTP verb. Returns a
+        response with the ``Allow`` header containing a list of the view's
+        allowed HTTP method names.
 
-TemplateView
-------------
+
+``TemplateView``
+================
 
 .. class:: django.views.generic.base.TemplateView
 
@@ -105,6 +118,7 @@ TemplateView
     This view inherits methods and attributes from the following views:
 
     * :class:`django.views.generic.base.TemplateResponseMixin`
+    * :class:`django.views.generic.base.ContextMixin`
     * :class:`django.views.generic.base.View`
 
     **Method Flowchart**
@@ -124,27 +138,30 @@ TemplateView
             template_name = "home.html"
 
             def get_context_data(self, **kwargs):
-                context = super(HomePageView, self).get_context_data(**kwargs)
+                context = super().get_context_data(**kwargs)
                 context['latest_articles'] = Article.objects.all()[:5]
                 return context
 
     **Example urls.py**::
 
-        from django.conf.urls import patterns, url
+        from django.conf.urls import url
 
         from myapp.views import HomePageView
 
-        urlpatterns = patterns('',
+        urlpatterns = [
             url(r'^$', HomePageView.as_view(), name='home'),
-        )
+        ]
 
     **Context**
 
-    * ``params``: The dictionary of keyword arguments captured from the URL
-      pattern that served the view.
+    * Populated (through :class:`~django.views.generic.base.ContextMixin`) with
+      the keyword arguments captured from the URL pattern that served the view.
+    * You can also add context using the
+      :attr:`~django.views.generic.base.ContextMixin.extra_context` keyword
+      argument for :meth:`~django.views.generic.base.View.as_view`.
 
-RedirectView
-------------
+``RedirectView``
+================
 
 .. class:: django.views.generic.base.RedirectView
 
@@ -185,23 +202,22 @@ RedirectView
             pattern_name = 'article-detail'
 
             def get_redirect_url(self, *args, **kwargs):
-                article = get_object_or_404(Article, pk=pk)
+                article = get_object_or_404(Article, pk=kwargs['pk'])
                 article.update_counter()
-                return super(ArticleCounterRedirectView, self).get_redirect_url(*args, **kwargs)
+                return super().get_redirect_url(*args, **kwargs)
 
     **Example urls.py**::
 
-        from django.conf.urls import patterns, url
+        from django.conf.urls import url
         from django.views.generic.base import RedirectView
 
         from article.views import ArticleCounterRedirectView, ArticleDetail
 
-        urlpatterns = patterns('',
-
-            url(r'^counter/(?P<pk>\d+)/$', ArticleCounterRedirectView.as_view(), name='article-counter'),
-            url(r'^details/(?P<pk>\d+)/$', ArticleDetail.as_view(), name='article-detail'),
-            url(r'^go-to-django/$', RedirectView.as_view(url='http://djangoproject.com'), name='go-to-django'),
-        )
+        urlpatterns = [
+            url(r'^counter/(?P<pk>[0-9]+)/$', ArticleCounterRedirectView.as_view(), name='article-counter'),
+            url(r'^details/(?P<pk>[0-9]+)/$', ArticleDetail.as_view(), name='article-detail'),
+            url(r'^go-to-django/$', RedirectView.as_view(url='https://djangoproject.com'), name='go-to-django'),
+        ]
 
     **Attributes**
 
@@ -212,8 +228,6 @@ RedirectView
 
     .. attribute:: pattern_name
 
-        .. versionadded:: 1.6
-
         The name of the URL pattern to redirect to. Reversing will be done
         using the same args and kwargs as are passed in for this view.
 
@@ -222,7 +236,7 @@ RedirectView
         Whether the redirect should be permanent. The only difference here is
         the HTTP status code returned. If ``True``, then the redirect will use
         status code 301. If ``False``, then the redirect will use status code
-        302. By default, ``permanent`` is ``True``.
+        302. By default, ``permanent`` is ``False``.
 
     .. attribute:: query_string
 
@@ -233,12 +247,19 @@ RedirectView
 
     **Methods**
 
-    .. method:: get_redirect_url(**kwargs)
+    .. method:: get_redirect_url(*args, **kwargs)
 
         Constructs the target URL for redirection.
 
         The default implementation uses :attr:`url` as a starting
-        string, performs expansion of ``%`` parameters in that string, as well
-        as the appending of query string if requested by :attr:`query_string`.
+        string and performs expansion of ``%`` named parameters in that string
+        using the named groups captured in the URL.
+
+        If :attr:`url` is not set, ``get_redirect_url()`` tries to reverse the
+        :attr:`pattern_name` using what was captured in the URL (both named and
+        unnamed groups are used).
+
+        If requested by :attr:`query_string`, it will also append the query
+        string to the generated URL.
         Subclasses may implement any behavior they wish, as long as the method
         returns a redirect-ready URL string.

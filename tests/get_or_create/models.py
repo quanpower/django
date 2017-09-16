@@ -1,22 +1,11 @@
-"""
-33. get_or_create()
-
-``get_or_create()`` does what it says: it tries to look up an object with the
-given parameters. If an object isn't found, it creates one with the given
-parameters.
-"""
-
-from __future__ import unicode_literals
-
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 
 
-@python_2_unicode_compatible
 class Person(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     birthday = models.DateField()
+    defaults = models.TextField()
 
     def __str__(self):
         return '%s %s' % (self.first_name, self.last_name)
@@ -32,7 +21,7 @@ class ManualPrimaryKeyTest(models.Model):
 
 
 class Profile(models.Model):
-    person = models.ForeignKey(Person, primary_key=True)
+    person = models.ForeignKey(Person, models.CASCADE, primary_key=True)
 
 
 class Tag(models.Model):
@@ -40,5 +29,36 @@ class Tag(models.Model):
 
 
 class Thing(models.Model):
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=255)
     tags = models.ManyToManyField(Tag)
+
+    @property
+    def capitalized_name_property(self):
+        return self.name
+
+    @capitalized_name_property.setter
+    def capitalized_name_property(self, val):
+        self.name = val.capitalize()
+
+    @property
+    def name_in_all_caps(self):
+        return self.name.upper()
+
+
+class Publisher(models.Model):
+    name = models.CharField(max_length=100)
+
+
+class Author(models.Model):
+    name = models.CharField(max_length=100)
+
+
+class Book(models.Model):
+    name = models.CharField(max_length=100)
+    authors = models.ManyToManyField(Author, related_name='books')
+    publisher = models.ForeignKey(
+        Publisher,
+        models.CASCADE,
+        related_name='books',
+        db_column="publisher_id_column",
+    )

@@ -1,16 +1,16 @@
 import os
 import shutil
+import stat
+import sys
 import tempfile
 import unittest
 
 from django.utils.archive import Archive, extract
-from django.utils._os import upath
+
+TEST_DIR = os.path.join(os.path.dirname(__file__), 'archives')
 
 
-TEST_DIR = os.path.join(os.path.dirname(upath(__file__)), 'archives')
-
-
-class ArchiveTester(object):
+class ArchiveTester:
     archive = None
 
     def setUp(self):
@@ -21,6 +21,7 @@ class ArchiveTester(object):
         self.tmpdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmpdir)
         self.archive_path = os.path.join(TEST_DIR, self.archive)
+        self.archive_lead_path = os.path.join(TEST_DIR, "leadpath_%s" % self.archive)
         # Always start off in TEST_DIR.
         os.chdir(TEST_DIR)
 
@@ -40,6 +41,22 @@ class ArchiveTester(object):
 
     def test_extract_function(self):
         extract(self.archive_path, self.tmpdir)
+        self.check_files(self.tmpdir)
+
+    @unittest.skipIf(sys.platform == 'win32', 'Python on Windows has a limited os.chmod().')
+    def test_extract_file_permissions(self):
+        """Archive.extract() preserves file permissions."""
+        extract(self.archive_path, self.tmpdir)
+        filepath = os.path.join(self.tmpdir, 'executable')
+        # The file has executable permission.
+        self.assertTrue(os.stat(filepath).st_mode & stat.S_IXOTH)
+        filepath = os.path.join(self.tmpdir, 'no_permissions')
+        # The file is readable even though it doesn't have permission data in
+        # the archive.
+        self.assertTrue(os.stat(filepath).st_mode & stat.S_IROTH)
+
+    def test_extract_function_with_leadpath(self):
+        extract(self.archive_lead_path, self.tmpdir)
         self.check_files(self.tmpdir)
 
     def test_extract_function_no_to_path(self):

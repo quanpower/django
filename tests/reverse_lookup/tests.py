@@ -1,9 +1,7 @@
-from __future__ import unicode_literals
-
 from django.core.exceptions import FieldError
 from django.test import TestCase
 
-from .models import User, Poll, Choice
+from .models import Choice, Poll, User
 
 
 class ReverseLookupTests(TestCase):
@@ -19,7 +17,7 @@ class ReverseLookupTests(TestCase):
             question="What's the second question?",
             creator=jim
         )
-        new_choice = Choice.objects.create(
+        Choice.objects.create(
             poll=first_poll,
             related_poll=second_poll,
             name="This is the answer."
@@ -48,5 +46,9 @@ class ReverseLookupTests(TestCase):
         """
         If a related_name is given you can't use the field name instead
         """
-        self.assertRaises(FieldError, Poll.objects.get,
-            choice__name__exact="This is the answer")
+        msg = (
+            "Cannot resolve keyword 'choice' into field. Choices are: "
+            "creator, creator_id, id, poll_choice, question, related_choice"
+        )
+        with self.assertRaisesMessage(FieldError, msg):
+            Poll.objects.get(choice__name__exact="This is the answer")

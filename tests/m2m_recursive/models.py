@@ -1,5 +1,5 @@
 """
-28. Many-to-many relationships between the same two tables
+Many-to-many relationships between the same two tables
 
 In this example, a ``Person`` can have many friends, who are also ``Person``
 objects. Friendship is a symmetrical relationship - if I am your friend, you
@@ -17,10 +17,8 @@ appropriate.
 """
 
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 
 
-@python_2_unicode_compatible
 class Person(models.Model):
     name = models.CharField(max_length=20)
     friends = models.ManyToManyField('self')

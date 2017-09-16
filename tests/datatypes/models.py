@@ -4,10 +4,8 @@ types, which in the past were problematic for some database backends.
 """
 
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
 
 
-@python_2_unicode_compatible
 class Donut(models.Model):
     name = models.CharField(max_length=100)
     is_frosted = models.BooleanField(default=False)
@@ -22,6 +20,7 @@ class Donut(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class RumBaba(models.Model):
     baked_date = models.DateField(auto_now_add=True)
